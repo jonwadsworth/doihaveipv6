@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"html"
 	"log"
 	"net"
 	"net/http"
@@ -14,6 +13,9 @@ import (
 
 //go:embed public/style.css
 var cssContent string
+
+//go:embed public/index.html
+var indexHTMLTemplate string
 
 func clientIP(r *http.Request) string {
 	if ip := r.Header.Get("X-Real-IP"); ip != "" {
@@ -31,11 +33,13 @@ func hasIPv6(ip string) bool {
 	if parsed == nil {
 		return false
 	}
-	// IPv4-mapped addresses (::ffff:x.x.x.x) are not real IPv6
 	return parsed.To4() == nil && parsed.To16() != nil
 }
 
 func handleAPI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "https://doihaveipv6.com")
+	w.Header().Set("Access-Control-Allow-Methods", "GET")
+
 	ip := clientIP(r)
 	v6 := hasIPv6(ip)
 	ipType := "IPv4"
@@ -62,47 +66,19 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Detect server-side as fallback in case probe subdomains aren't live yet
 	ip := clientIP(r)
 	v6 := hasIPv6(ip)
-	safeIP := html.EscapeString(ip)
-
-	verdict, verdictClass, ipLabel, ipColor, ipTypeText := "NO", "verdict-no", "Your IPv4 address", "#ffab40", "IPv4"
-	extraNote := `<p class="no-explainer">You didn't reach us over IPv6. Your connection came in as IPv4 — either your ISP doesn't offer IPv6, or your device fell back to IPv4 (e.g. broken IPv6 routing, VPN, or Happy Eyeballs fallback).</p>`
-
+	v6JS := "false"
 	if v6 {
-		verdict, verdictClass, ipLabel, ipColor, ipTypeText = "YES", "verdict-yes", "Your IPv6 address", "#40c4ff", "IPv6"
-		extraNote = ""
+		v6JS = "true"
 	}
 
+	fallback := fmt.Sprintf(`<script>window.__sip=%q;window.__sv6=%s;</script>`, ip, v6JS)
+	page := strings.Replace(indexHTMLTemplate, "__SERVER_FALLBACK__", fallback, 1)
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Do I Have IPv6?</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <main>
-    <h1 class="site-title">Do I Have IPv6?</h1>
-    <div class="verdict %s">%s</div>
-    <div class="ip-info">
-      <p class="ip-label">%s</p>
-      <p class="ip-value" style="color:%s">%s</p>
-      %s
-    </div>
-    <div class="explainer">
-      <p>IPv6 is the modern internet protocol that provides virtually unlimited addresses.
-         Most major ISPs and networks now support it.</p>
-      <p>You connected from <strong>%s</strong>, which is a <strong>%s</strong> address.</p>
-    </div>
-    <footer>
-      <a href="/api">JSON API</a> &mdash; <a href="https://github.com/jonwadsworth/doihaveipv6">source</a>
-    </footer>
-  </main>
-</body>
-</html>`, verdictClass, verdict, ipLabel, ipColor, safeIP, extraNote, safeIP, ipTypeText)
+	fmt.Fprint(w, page)
 }
 
 func main() {

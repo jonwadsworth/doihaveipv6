@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Do I Have IPv6?</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <h1 class="site-title">Do I Have IPv6?</h1>
+    <div class="verdict verdict-checking" id="verdict">?</div>
+    <div class="ip-info" id="ip-info">
+      <p class="checking-msg">Probing your connection&hellip;</p>
+    </div>
+    <div class="explainer" id="explainer"></div>
+    <footer>
+      <a href="/api">JSON API</a> &mdash; <a href="https://github.com/jonwadsworth/doihaveipv6">source</a>
+    </footer>
+  </main>
+
+  <script>
+(async function () {
+  const TIMEOUT = 5000;
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async function probe(url) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), TIMEOUT);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal });
+      return await r.json();
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  function render(hasV6, v6ip, v4ip) {
+    const verdict = document.getElementById('verdict');
+    const ipInfo  = document.getElementById('ip-info');
+    const exp     = document.getElementById('explainer');
+
+    if (hasV6) {
+      verdict.textContent = 'YES';
+      verdict.className   = 'verdict verdict-yes';
+      ipInfo.innerHTML =
+        `<p class="ip-label">Your IPv6 address</p>
+         <p class="ip-value" style="color:#40c4ff">${esc(v6ip)}</p>` +
+        (v4ip
+          ? `<p class="ip-label" style="margin-top:1.2rem">Your IPv4 address</p>
+             <p class="ip-value" style="color:#ffab40">${esc(v4ip)}</p>`
+          : '');
+      exp.innerHTML =
+        `<p>IPv6 is the modern internet protocol that provides virtually unlimited addresses.
+            Most major ISPs and networks now support it.</p>
+         <p>You connected from <strong>${esc(v6ip)}</strong> — a working <strong>IPv6</strong> address.</p>`;
+    } else {
+      verdict.textContent = 'NO';
+      verdict.className   = 'verdict verdict-no';
+      const ip = v4ip || 'unknown';
+      ipInfo.innerHTML =
+        `<p class="ip-label">Your IPv4 address</p>
+         <p class="ip-value" style="color:#ffab40">${esc(ip)}</p>
+         <p class="no-explainer">You didn't reach us over IPv6. Your connection came in as IPv4 —
+           either your ISP doesn't offer IPv6, or your device fell back to IPv4
+           (e.g.&nbsp;broken IPv6 routing, VPN, or Happy Eyeballs fallback).</p>`;
+      exp.innerHTML =
+        `<p>IPv6 is the modern internet protocol that provides virtually unlimited addresses.
+            Most major ISPs and networks now support it.</p>
+         <p>You connected from <strong>${esc(ip)}</strong> — an <strong>IPv4</strong> address.</p>`;
+    }
+  }
+
+  // Try the dual probe first (accurate — each subdomain only has one record type).
+  // Falls back to server-side detection injected below if subdomains aren't set up yet.
+  const [v6, v4] = await Promise.all([
+    probe('https://ipv6.doihaveipv6.com/api'),
+    probe('https://ipv4.doihaveipv6.com/api'),
+  ]);
+
+  if (v6 !== null || v4 !== null) {
+    render(v6 !== null, v6?.ip ?? null, v4?.ip ?? null);
+  } else {
+    // Probe subdomains not reachable yet — use server-side fallback
+    render(window.__sv6, window.__sip, window.__sip);
+  }
+})();
+  </script>
+  <!-- server-side fallback injected by Go -->
+  __SERVER_FALLBACK__
+</body>
+</html>
