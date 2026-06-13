@@ -2,3 +2,5 @@
 *.log
 doihaveipv6
 doihaveipv6.exe
+
+package-lock.json
