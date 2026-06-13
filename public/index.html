@@ -51,10 +51,10 @@
       verdict.textContent = 'YES';
       verdict.className   = 'verdict verdict-yes';
       ipInfo.innerHTML =
-        `<p class="ip-label">Your IPv6 address</p>
+        `<p class="ip-label">Your public IPv6 address</p>
          <p class="ip-value" style="color:#40c4ff">${esc(v6ip)}</p>` +
         (v4ip
-          ? `<p class="ip-label" style="margin-top:1.2rem">Your IPv4 address</p>
+          ? `<p class="ip-label" style="margin-top:1.2rem">Your public IPv4 address</p>
              <p class="ip-value" style="color:#ffab40">${esc(v4ip)}</p>`
           : '');
       exp.innerHTML =
@@ -66,7 +66,7 @@
       verdict.className   = 'verdict verdict-no';
       const ip = v4ip || 'unknown';
       ipInfo.innerHTML =
-        `<p class="ip-label">Your IPv4 address</p>
+        `<p class="ip-label">Your public IPv4 address</p>
          <p class="ip-value" style="color:#ffab40">${esc(ip)}</p>
          <p class="no-explainer">You didn't reach us over IPv6. Your connection came in as IPv4 —
            either your ISP doesn't offer IPv6, or your device fell back to IPv4
