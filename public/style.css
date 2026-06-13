@@ -1,0 +1,129 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d2e;
+  --yes: #00e676;
+  --no: #ff1744;
+  --text: #e0e0e0;
+  --muted: #888;
+  --ipv6-color: #40c4ff;
+  --ipv4-color: #ffab40;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+main {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  max-width: 640px;
+  width: 100%;
+}
+
+.site-title {
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+
+.verdict {
+  font-size: clamp(8rem, 30vw, 14rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin-bottom: 2.5rem;
+}
+
+.verdict-yes {
+  color: var(--yes);
+  text-shadow: 0 0 80px rgba(0, 230, 118, 0.4);
+}
+
+.verdict-no {
+  color: var(--no);
+  text-shadow: 0 0 80px rgba(255, 23, 68, 0.4);
+}
+
+.ip-info {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.ip-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.ip-value {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.ip-value.ipv6 {
+  color: var(--ipv6-color);
+}
+
+.ip-value.ipv4 {
+  color: var(--ipv4-color);
+}
+
+.no-explainer {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.explainer {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 2.5rem;
+}
+
+.explainer p + p {
+  margin-top: 0.5rem;
+}
+
+.explainer strong {
+  color: var(--text);
+}
+
+footer {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+footer a {
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+footer a:hover {
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
