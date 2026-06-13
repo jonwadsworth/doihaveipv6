@@ -67,7 +67,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 	safeIP := html.EscapeString(ip)
 
 	verdict, verdictClass, ipLabel, ipColor, ipTypeText := "NO", "verdict-no", "Your IPv4 address", "#ffab40", "IPv4"
-	extraNote := `<p class="no-explainer">Your device connected over IPv4 — either your ISP doesn't offer IPv6 yet, or it's disabled on your network.</p>`
+	extraNote := `<p class="no-explainer">You didn't reach us over IPv6. Your connection came in as IPv4 — either your ISP doesn't offer IPv6, or your device fell back to IPv4 (e.g. broken IPv6 routing, VPN, or Happy Eyeballs fallback).</p>`
 
 	if v6 {
 		verdict, verdictClass, ipLabel, ipColor, ipTypeText = "YES", "verdict-yes", "Your IPv6 address", "#40c4ff", "IPv6"
