@@ -13,6 +13,7 @@
     <div class="ip-info" id="ip-info">
       <p class="checking-msg">Probing your connection&hellip;</p>
     </div>
+    <div id="extra"></div>
     <div class="explainer" id="explainer"></div>
     <footer>
       <a href="/api">JSON API</a> &mdash; <a href="https://github.com/jonwadsworth/doihaveipv6">source</a>
@@ -25,8 +26,8 @@
 
   function esc(s) {
     return String(s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   async function probe(url) {
@@ -35,51 +36,105 @@
     try {
       const r = await fetch(url, { signal: ctrl.signal });
       return await r.json();
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(t);
-    }
+    } catch { return null; }
+    finally { clearTimeout(t); }
+  }
+
+  async function geo(ip) {
+    try {
+      const r = await fetch('/geo?ip=' + encodeURIComponent(ip));
+      return await r.json();
+    } catch { return null; }
+  }
+
+  function copyBtn(ip) {
+    return `<button class="copy-btn" onclick="copyText(this,'${esc(ip)}')">Copy</button>`;
+  }
+
+  function shareLink(text, cls, label) {
+    const href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+    return `<a class="share-btn ${cls}" href="${href}" target="_blank" rel="noopener">${label} ↗</a>`;
+  }
+
+  function fillGeo(elId, ip) {
+    geo(ip).then(g => {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      if (g && g.isp) {
+        el.textContent = [g.isp, g.city, g.country].filter(Boolean).join(' · ');
+        if (elId === 'geo-v4') window.__detectedISP = g.isp;
+      } else {
+        el.textContent = '';
+      }
+    });
   }
 
   function render(hasV6, v6ip, v4ip) {
-    const verdict = document.getElementById('verdict');
-    const ipInfo  = document.getElementById('ip-info');
-    const exp     = document.getElementById('explainer');
+    const verdict  = document.getElementById('verdict');
+    const ipInfo   = document.getElementById('ip-info');
+    const extra    = document.getElementById('extra');
+    const exp      = document.getElementById('explainer');
 
     if (hasV6) {
       verdict.textContent = 'YES';
       verdict.className   = 'verdict verdict-yes';
+
       ipInfo.innerHTML =
         `<p class="ip-label">Your public IPv6 address</p>
-         <p class="ip-value" style="color:#40c4ff">${esc(v6ip)}</p>` +
+         <p class="ip-value ipv6">${esc(v6ip)} ${copyBtn(v6ip)}</p>
+         <p class="geo-blurb" id="geo-v6">Looking up ISP&hellip;</p>` +
         (v4ip
           ? `<p class="ip-label" style="margin-top:1.2rem">Your public IPv4 address</p>
-             <p class="ip-value" style="color:#ffab40">${esc(v4ip)}</p>`
+             <p class="ip-value ipv4">${esc(v4ip)} ${copyBtn(v4ip)}</p>
+             <p class="geo-blurb" id="geo-v4"></p>`
           : '');
+
+      extra.innerHTML =
+        `<div class="share-row">
+           ${shareLink('I has IPv6! ✓ Is your ISP future-proof? Check at https://doihaveipv6.com', 'share-yes', 'Share the good news')}
+         </div>`;
+
       exp.innerHTML =
-        `<p>IPv6 is the modern internet protocol that provides virtually unlimited addresses.
-            Most major ISPs and networks now support it.</p>
-         <p>You connected from <strong>${esc(v6ip)}</strong> — a working <strong>IPv6</strong> address.</p>`;
+        `<p>IPv6 is the modern internet protocol with virtually unlimited addresses.
+            Most major ISPs now support it.</p>
+         <p>You connected from <strong>${esc(v6ip)}</strong> &mdash; a working <strong>IPv6</strong> address.</p>`;
+
+      fillGeo('geo-v6', v6ip);
+      if (v4ip) fillGeo('geo-v4', v4ip);
+
     } else {
       verdict.textContent = 'NO';
       verdict.className   = 'verdict verdict-no';
       const ip = v4ip || 'unknown';
+
       ipInfo.innerHTML =
         `<p class="ip-label">Your public IPv4 address</p>
-         <p class="ip-value" style="color:#ffab40">${esc(ip)}</p>
-         <p class="no-explainer">You didn't reach us over IPv6. Your connection came in as IPv4 —
+         <p class="ip-value ipv4">${esc(ip)} ${v4ip ? copyBtn(ip) : ''}</p>
+         <p class="geo-blurb" id="geo-v4">Looking up ISP&hellip;</p>
+         <p class="no-explainer">You didn't reach us over IPv6. Your connection came in as IPv4 &mdash;
            either your ISP doesn't offer IPv6, or your device fell back to IPv4
            (e.g.&nbsp;broken IPv6 routing, VPN, or Happy Eyeballs fallback).</p>`;
+
+      extra.innerHTML =
+        `<div class="meme-box">
+           <p class="meme-heading">Can I has IPv6? 😿</p>
+           <p class="meme-sub">Turns out, no. But you can ask nicely.</p>
+           <button class="complaint-btn" id="complaint-btn" onclick="copyComplaint(this)">Copy complaint for your ISP</button>
+           <p class="complaint-hint" id="complaint-hint"></p>
+         </div>
+         <div class="share-row">
+           ${shareLink("Can I has IPv6? 😿 My ISP still has me on IPv4. Check yours at https://doihaveipv6.com", 'share-no', 'Share your shame')}
+         </div>`;
+
       exp.innerHTML =
-        `<p>IPv6 is the modern internet protocol that provides virtually unlimited addresses.
-            Most major ISPs and networks now support it.</p>
-         <p>You connected from <strong>${esc(ip)}</strong> — an <strong>IPv4</strong> address.</p>`;
+        `<p>IPv6 is the modern internet protocol with virtually unlimited addresses.
+            Most major ISPs now support it.</p>
+         <p>You connected from <strong>${esc(ip)}</strong> &mdash; an <strong>IPv4</strong> address.</p>`;
+
+      if (v4ip) fillGeo('geo-v4', v4ip);
     }
   }
 
-  // Try the dual probe first (accurate — each subdomain only has one record type).
-  // Falls back to server-side detection injected below if subdomains aren't set up yet.
   const [v6, v4] = await Promise.all([
     probe('https://ipv6.doihaveipv6.com/api'),
     probe('https://ipv4.doihaveipv6.com/api'),
@@ -88,10 +143,33 @@
   if (v6 !== null || v4 !== null) {
     render(v6 !== null, v6?.ip ?? null, v4?.ip ?? null);
   } else {
-    // Probe subdomains not reachable yet — use server-side fallback
     render(window.__sv6, window.__sip, window.__sip);
   }
 })();
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function copyComplaint(btn) {
+  const isp  = window.__detectedISP || 'your ISP';
+  const text =
+    `Hi ${isp},\n\n` +
+    `I just checked doihaveipv6.com and found that I'm only connecting via IPv4 — I don't have IPv6.\n\n` +
+    `IPv6 has been the internet standard since 2012 and most major providers have already rolled it out. ` +
+    `Could you please enable IPv6 on my account, or let me know when it will be available?\n\n` +
+    `Thanks`;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    const hint = document.getElementById('complaint-hint');
+    if (hint) hint.textContent = 'Paste it into a chat with your ISP\'s support team.';
+  });
+}
   </script>
   <!-- server-side fallback injected by Go -->
   __SERVER_FALLBACK__

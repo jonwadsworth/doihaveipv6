@@ -7,8 +7,10 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 //go:embed public/style.css
@@ -16,6 +18,8 @@ var cssContent string
 
 //go:embed public/index.html
 var indexHTMLTemplate string
+
+var geoClient = &http.Client{Timeout: 3 * time.Second}
 
 func clientIP(r *http.Request) string {
 	if ip := r.Header.Get("X-Real-IP"); ip != "" {
@@ -54,6 +58,45 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func handleGeo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "https://doihaveipv6.com")
+
+	ip := r.URL.Query().Get("ip")
+	if net.ParseIP(ip) == nil {
+		http.Error(w, "invalid ip", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := geoClient.Get("https://ipwho.is/" + url.PathEscape(ip))
+	if err != nil {
+		http.Error(w, "lookup failed", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		City    string `json:"city"`
+		Country string `json:"country"`
+		Success bool   `json:"success"`
+		Conn    struct {
+			ISP string `json:"isp"`
+		} `json:"connection"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || !data.Success {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, "{}")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	json.NewEncoder(w).Encode(map[string]string{
+		"isp":     data.Conn.ISP,
+		"city":    data.City,
+		"country": data.Country,
+	})
+}
+
 func handleCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css")
 	w.Header().Set("Cache-Control", "public, max-age=86400")
@@ -66,7 +109,6 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Detect server-side as fallback in case probe subdomains aren't live yet
 	ip := clientIP(r)
 	v6 := hasIPv6(ip)
 	v6JS := "false"
@@ -88,6 +130,7 @@ func main() {
 	}
 
 	http.HandleFunc("/api", handleAPI)
+	http.HandleFunc("/geo", handleGeo)
 	http.HandleFunc("/style.css", handleCSS)
 	http.HandleFunc("/", handlePage)
 
