@@ -41,7 +41,7 @@ func hasIPv6(ip string) bool {
 }
 
 func handleAPI(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "https://doihaveipv6.com")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET")
 
 	ip := clientIP(r)
